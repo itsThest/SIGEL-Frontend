@@ -14,11 +14,16 @@ import Dashboard      from './pages/Dashboard';
 import Activos        from './pages/Activos';
 import Prestamos      from './pages/Prestamos';
 import Mantenimientos from './pages/Mantenimientos';
+import Profile        from './pages/Profile';
+
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <>
+      <Toaster position="top-right" reverseOrder={false} />
+      <BrowserRouter>
+        <Routes>
         {/* ── Rutas públicas ──────────────────────────── */}
         <Route path="/"         element={<Navigate to="/login" replace />} />
         <Route path="/login"    element={<Login />} />
@@ -30,6 +35,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/activos"   element={<Activos />} />
             <Route path="/prestamos" element={<Prestamos />} />
+            <Route path="/perfil"    element={<Profile />} />
 
             {/* Solo Administradores */}
             <Route element={<AdminRoute />}>
@@ -42,6 +48,7 @@ function App() {
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
+    </>
   );
 }
 

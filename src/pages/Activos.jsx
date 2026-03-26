@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, X, AlertTriangle, ImageOff, Search, Package, ShoppingCart, Send, CheckCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 import useApi from '../hooks/useApi';
 import usePagination from '../hooks/usePagination';
 import Pagination from '../components/Pagination';
@@ -16,16 +18,6 @@ const CATEGORIAS = [
   'Analizador de Espectro', 'Cable / Patch', 'Otro',
 ];
 const ESTADOS = ['Bueno', 'Regular', 'Dañado'];
-
-/* ── Spinner ─────────────────────────────────────────────────── */
-const Spinner = () => (
-  <div className="flex justify-center items-center py-20">
-    <svg className="animate-spin h-8 w-8 text-carrera-blue" fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-    </svg>
-  </div>
-);
 
 /* ── Badges ──────────────────────────────────────────────────── */
 const DisponibilidadBadge = ({ value }) => {
@@ -136,7 +128,7 @@ const ModalNuevoActivo = ({ onClose, onSuccess }) => {
           <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancelar</button>
             <button type="submit" disabled={saving}
-              className="px-5 py-2.5 rounded-xl bg-carrera-blue text-white text-sm font-semibold hover:bg-blue-900 transition-colors disabled:opacity-60 flex items-center gap-2 shadow-md">
+              className="px-5 py-2.5 rounded-xl bg-carrera-blue text-white text-sm font-semibold hover:bg-blue-900 transition-all duration-300 hover:scale-[1.02] active:scale-95 disabled:hover:scale-100 disabled:opacity-60 flex items-center gap-2 shadow-md">
               {saving
                 ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Guardando…</>
                 : <><Plus size={16}/> Guardar equipo</>
@@ -179,7 +171,7 @@ const CarritoPanel = ({ carrito, onRemove, onEnviar, sending, onClear }) => {
         <button
           onClick={onEnviar}
           disabled={sending}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-carrera-blue text-white text-sm font-semibold hover:bg-blue-900 transition-colors disabled:opacity-60 shadow-md"
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-carrera-blue text-white text-sm font-semibold hover:bg-blue-900 transition-all duration-300 hover:scale-[1.02] active:scale-95 disabled:hover:scale-100 disabled:opacity-60 shadow-md"
         >
           {sending
             ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Enviando…</>
@@ -199,7 +191,6 @@ const Activos = () => {
   const [categoriaActiva, setCategoriaActiva] = useState('Todos');
   const [carrito, setCarrito] = useState([]);   // equipos seleccionados para solicitud
   const [sending, setSending] = useState(false);
-  const [toast,   setToast]   = useState(null);
 
   const admin   = isAdmin();
   const user    = getUser();
@@ -233,16 +224,16 @@ const Activos = () => {
 
   /* Carrito */
   const enCarrito   = (id) => carrito.some(a => a.id_activo === id);
-  const addCarrito  = (activo) => { if (!enCarrito(activo.id_activo)) setCarrito(c => [...c, activo]); };
+  const addCarrito  = (activo) => {
+    if (!enCarrito(activo.id_activo)) {
+      setCarrito(c => [...c, activo]);
+      toast.success(`${activo.nombre} añadido a la solicitud`, { position: 'bottom-center' });
+    }
+  };
   const removeCarrito = (id)   => setCarrito(c => c.filter(a => a.id_activo !== id));
 
-  const showToast = (msg, ok = true) => {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3500);
-  };
-
   const enviarSolicitud = async () => {
-    if (!user?.id) { showToast('No se pudo identificar al usuario. Vuelve a iniciar sesión.', false); return; }
+    if (!user?.id) { toast.error('No se pudo identificar al usuario. Vuelve a iniciar sesión.'); return; }
     setSending(true);
     try {
       await crearPrestamo({
@@ -251,22 +242,14 @@ const Activos = () => {
       });
       setCarrito([]);
       refetch();
-      showToast(`Solicitud enviada (${carrito.length} equipo${carrito.length !== 1 ? 's' : ''}). Pendiente de aprobación.`);
+      toast.success(`Solicitud enviada (${carrito.length} equipo${carrito.length !== 1 ? 's' : ''}). Pendiente de aprobación.`);
     } catch (ex) {
-      showToast(ex.response?.data?.error ?? 'Error al enviar la solicitud.', false);
+      toast.error(ex.response?.data?.error ?? 'Error al enviar la solicitud.');
     } finally { setSending(false); }
   };
 
   return (
-    <div>
-      {/* Toast de confirmación */}
-      {toast && (
-        <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg text-white text-sm font-medium transition-all ${toast.ok ? 'bg-carrera-green' : 'bg-utn-red'}`}>
-          {toast.ok ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
-          {toast.msg}
-        </div>
-      )}
-
+    <div className="animate-in fade-in duration-500">
       {/* Carrito flotante — solo para no-admins */}
       {!admin && (
         <CarritoPanel
@@ -289,7 +272,7 @@ const Activos = () => {
         {/* Botón solo para Admin */}
         {admin && (
           <button onClick={() => setModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-carrera-blue text-white text-sm font-semibold rounded-xl hover:bg-blue-900 shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 self-start sm:self-auto">
+            className="flex items-center gap-2 px-4 py-2.5 bg-carrera-blue text-white text-sm font-semibold rounded-xl hover:bg-blue-900 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 self-start sm:self-auto">
             <Plus size={16} /> Nuevo equipo
           </button>
         )}
@@ -325,8 +308,8 @@ const Activos = () => {
         ))}
       </div>
 
-      {modal && <ModalNuevoActivo onClose={() => setModal(false)} onSuccess={() => { setModal(false); refetch(); }} />}
-      {loading && <Spinner />}
+      {modal && <ModalNuevoActivo onClose={() => setModal(false)} onSuccess={() => { setModal(false); refetch(); toast.success('Equipo registrado impecablemente.'); }} />}
+      {loading && <LoadingSkeleton count={3} type="table" />}
 
       {error && (
         <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
@@ -361,10 +344,10 @@ const Activos = () => {
                   return acc;
                 }, {})
               ).map(([categoria, listaActivos], index) => (
-                <div key={categoria} className={index > 0 ? "mt-10" : ""}>
+                <div key={categoria} className={`animate-in fade-in slide-in-from-bottom-4 duration-500 ${index > 0 ? "mt-10" : ""}`}>
                   <h3 className="text-lg font-bold text-gray-700 bg-gray-50/50 px-5 py-3 border-b border-gray-200">
                     {categoria}
-                    <span className="ml-3 text-xs font-normal text-gray-400 bg-white px-2 py-0.5 rounded-md border border-gray-200">
+                    <span className="ml-3 text-xs font-normal text-gray-400 bg-white px-2 py-0.5 rounded-md border border-gray-200 shadow-sm">
                       {listaActivos.length} equipo{listaActivos.length !== 1 ? 's' : ''}
                     </span>
                   </h3>
@@ -395,18 +378,18 @@ const Activos = () => {
                             <td className="px-5 py-3"><DisponibilidadBadge value={a.disponibilidad} /></td>
                             {!admin && (
                               <td className="px-5 py-3">
-                                {a.disponibilidad === 'Disponible' ? (
+                              {a.disponibilidad === 'Disponible' ? (
                                   enCarrito(a.id_activo) ? (
                                     <button
                                       onClick={() => removeCarrito(a.id_activo)}
-                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-carrera-green/10 text-carrera-green text-xs font-semibold rounded-lg border border-carrera-green/30 hover:bg-red-50 hover:text-utn-red hover:border-red-200 transition-colors"
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-carrera-green/10 text-carrera-green text-xs font-semibold rounded-lg border border-carrera-green/30 hover:bg-red-50 hover:text-utn-red hover:border-red-200 transition-all duration-300 hover:scale-[1.03] active:scale-95"
                                     >
                                       <CheckCircle size={12} /> Añadido
                                     </button>
                                   ) : (
                                     <button
                                       onClick={() => addCarrito(a)}
-                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-carrera-blue text-white text-xs font-semibold rounded-lg hover:bg-blue-900 transition-colors shadow-sm"
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-carrera-blue text-white text-xs font-semibold rounded-lg hover:bg-blue-900 transition-all duration-300 hover:scale-[1.03] active:scale-95 shadow-sm"
                                     >
                                       <Plus size={12} /> Añadir a Solicitud
                                     </button>

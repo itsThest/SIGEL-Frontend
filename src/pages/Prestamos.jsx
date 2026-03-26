@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { AlertTriangle, CheckCircle, Clock, X, FileDown, Plus, ThumbsUp, ThumbsDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import toast from 'react-hot-toast';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 import useApi from '../hooks/useApi';
 import usePagination from '../hooks/usePagination';
 import Pagination from '../components/Pagination';
@@ -14,15 +16,6 @@ const PAGE_SIZE = 10;
 /* ── Helpers ─────────────────────────────────────────────────── */
 const formatFecha = (iso) =>
   iso ? new Date(iso).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' }) : '—';
-
-const Spinner = () => (
-  <div className="flex justify-center py-20">
-    <svg className="animate-spin h-8 w-8 text-carrera-blue" fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-    </svg>
-  </div>
-);
 
 /* ── Badge estado ────────────────────────────────────────────── */
 const EstadoBadge = ({ value }) => {
@@ -62,6 +55,7 @@ const ModalNuevoPrestamo = ({ onClose, onSuccess }) => {
         id_usuario:           Number(form.id_usuario),
         observaciones_salida: form.observaciones_salida,
       });
+      toast.success('Préstamo registrado exitosamente.');
       onSuccess();
     } catch (ex) {
       setErr(ex.response?.data?.error ?? 'Error al registrar el préstamo.');
@@ -170,8 +164,8 @@ const ModalAprobacion = ({ prestamo, onClose, onConfirm, loading }) => {
           </div>
           <div className="flex justify-end gap-3 pt-1">
             <button onClick={onClose} className="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancelar</button>
-            <button onClick={() => { if(obs.trim()) onConfirm(obs); else alert('Las observaciones de salida son requeridas.'); }} disabled={loading || !obs.trim()}
-              className="px-5 py-2 rounded-xl bg-carrera-blue text-white text-sm font-semibold hover:bg-blue-900 transition-colors disabled:opacity-60 flex items-center gap-2 shadow-md">
+            <button onClick={() => { if(obs.trim()) onConfirm(obs); else toast.error('Las observaciones de salida son requeridas.'); }} disabled={loading || !obs.trim()}
+              className="px-5 py-2 rounded-xl bg-carrera-blue text-white text-sm font-semibold hover:bg-blue-900 transition-all duration-300 hover:scale-[1.02] active:scale-95 disabled:opacity-60 flex items-center gap-2 shadow-md">
               {loading
                 ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Procesando…</>
                 : <><ThumbsUp size={15}/> Aprobar y Entregar</>
@@ -363,9 +357,10 @@ const Prestamos = () => {
     try {
       await devolverPrestamo(selected.id_prestamo, { observaciones_recepcion });
       setSelected(null);
+      toast.success('Equipo devuelto con éxito.');
       refetch();
     } catch (ex) {
-      alert(ex.response?.data?.error ?? 'No se pudo registrar la devolución.');
+      toast.error(ex.response?.data?.error ?? 'No se pudo registrar la devolución.');
     } finally { setSaving(false); }
   };
 
@@ -378,9 +373,10 @@ const Prestamos = () => {
     try {
       await aprobarPrestamo(selectedAprobar.id_prestamo, { observaciones_salida });
       setSelectedAprobar(null);
+      toast.success('Préstamo aprobado y equipo entregado.');
       refetch();
     } catch (ex) {
-      alert(ex.response?.data?.error ?? 'No se pudo registrar la salida del equipo.');
+      toast.error(ex.response?.data?.error ?? 'No se pudo registrar la salida del equipo.');
     } finally { setSaving(false); }
   };
 
@@ -388,9 +384,10 @@ const Prestamos = () => {
     if (!window.confirm(`¿Rechazar la solicitud #${p.id_prestamo}?`)) return;
     try {
       await rechazarPrestamo(p.id_prestamo);
+      toast.success('Solicitud rechazada.');
       refetch();
     } catch (ex) {
-      alert(ex.response?.data?.error ?? 'Error al rechazar.');
+      toast.error(ex.response?.data?.error ?? 'Error al rechazar.');
     }
   };
 
@@ -406,7 +403,7 @@ const Prestamos = () => {
   );
 
   return (
-    <div>
+    <div className="animate-in fade-in duration-500">
       {modalNuevo && (
         <ModalNuevoPrestamo
           onClose={() => setModalNuevo(false)}
@@ -447,7 +444,7 @@ const Prestamos = () => {
         )}
       </div>
 
-      {loading && <Spinner />}
+      {loading && <LoadingSkeleton count={3} type="table" />}
 
       {error && (
         <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-4">
