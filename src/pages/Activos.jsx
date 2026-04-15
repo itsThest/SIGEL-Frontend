@@ -1,13 +1,14 @@
-import React, { useState, useMemo } from 'react';
-import { Plus, X, AlertTriangle, ImageOff, Search, Package, ShoppingCart, Send, CheckCircle } from 'lucide-react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Plus, X, AlertTriangle, ImageOff, Search, Package, ShoppingCart, Send, CheckCircle, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import useApi from '../hooks/useApi';
 import usePagination from '../hooks/usePagination';
 import Pagination from '../components/Pagination';
 import { getActivos, crearActivo } from '../services/activosService';
+import { getLaboratorios } from '../services/laboratoriosService';
 import { crearPrestamo } from '../services/prestamosService';
-import { isAdmin, getUser } from '../utils/auth';
+import { isAdmin, isStaff, getUser } from '../utils/auth';
 
 const PAGE_SIZE = 10;
 
@@ -22,8 +23,8 @@ const ESTADOS = ['Bueno', 'Regular', 'Dañado'];
 /* ── Badges ──────────────────────────────────────────────────── */
 const DisponibilidadBadge = ({ value }) => {
   const map = {
-    'Disponible':       'bg-emerald-50 text-emerald-700 border-emerald-200',
-    'Prestado':         'bg-amber-50   text-amber-700   border-amber-200',
+    'Disponible': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    'Prestado': 'bg-amber-50   text-amber-700   border-amber-200',
     'En Mantenimiento': 'bg-blue-50    text-blue-700    border-blue-200',
   };
   return (
@@ -38,16 +39,20 @@ const EstadoBadge = ({ value }) => {
   return <span className={`text-xs font-medium ${map[value] ?? 'text-gray-500'}`}>{value ?? '—'}</span>;
 };
 
-/* ── Modal: Registrar nuevo activo (solo Admin) ──────────────── */
+/* ── Modal: Registrar nuevo activo (solo Staff) ────────────── */
 const ModalNuevoActivo = ({ onClose, onSuccess }) => {
+  const { data: labsData, loading: loadingLabs } = useApi(getLaboratorios);
+  const laboratorios = labsData?.data ?? [];
+
   const [form, setForm] = useState({
     codigo_institucional: '', nombre: '', mac_o_serial: '',
     tipo: 'Laptop', estado_fisico: 'Bueno', disponibilidad: 'Disponible',
+    id_laboratorio: '',
   });
-  const [foto,    setFoto]    = useState(null);
+  const [foto, setFoto] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [saving,  setSaving]  = useState(false);
-  const [err,     setErr]     = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
 
   const handle = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
   const handleFoto = (e) => {
@@ -59,6 +64,7 @@ const ModalNuevoActivo = ({ onClose, onSuccess }) => {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!form.id_laboratorio) { setErr('Selecciona el laboratorio al que pertenece el equipo.'); return; }
     setSaving(true); setErr(null);
     try {
       const fd = new FormData();
@@ -91,10 +97,36 @@ const ModalNuevoActivo = ({ onClose, onSuccess }) => {
               <AlertTriangle size={15} className="mt-0.5 flex-shrink-0" />{err}
             </div>
           )}
+
+          {/* Laboratorio asignado */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+              Laboratorio asignado <span className="text-utn-red">*</span>
+            </label>
+            {loadingLabs ? (
+              <div className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-400">
+                <svg className="animate-spin h-4 w-4 text-carrera-blue" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Cargando laboratorios…
+              </div>
+            ) : (
+              <select name="id_laboratorio" value={form.id_laboratorio} onChange={handle} required className={inputCls}>
+                <option value="">— Selecciona un laboratorio —</option>
+                {laboratorios.map(l => (
+                  <option key={l.id_laboratorio} value={l.id_laboratorio}>
+                    {l.nombre_lab}{l.ubicacion ? ` · ${l.ubicacion}` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
           {[
             { label: 'Código institucional', name: 'codigo_institucional', placeholder: 'UTN-LAB-001' },
-            { label: 'Nombre del equipo',    name: 'nombre',               placeholder: 'Laptop HP ProBook 450 G8' },
-            { label: 'Número de serie / MAC',name: 'mac_o_serial',         placeholder: 'SN-5CG1234567 o AA:BB:CC:DD:EE:FF' },
+            { label: 'Nombre del equipo',     name: 'nombre',              placeholder: 'Laptop HP ProBook 450 G8' },
+            { label: 'Número de serie / MAC', name: 'mac_o_serial',        placeholder: 'SN-5CG1234567 o AA:BB:CC:DD:EE:FF' },
           ].map(f => (
             <div key={f.name}>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">{f.label} <span className="text-utn-red">*</span></label>
@@ -127,11 +159,11 @@ const ModalNuevoActivo = ({ onClose, onSuccess }) => {
           </div>
           <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancelar</button>
-            <button type="submit" disabled={saving}
+            <button type="submit" disabled={saving || loadingLabs}
               className="px-5 py-2.5 rounded-xl bg-carrera-blue text-white text-sm font-semibold hover:bg-blue-900 transition-all duration-300 hover:scale-[1.02] active:scale-95 disabled:hover:scale-100 disabled:opacity-60 flex items-center gap-2 shadow-md">
               {saving
-                ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Guardando…</>
-                : <><Plus size={16}/> Guardar equipo</>
+                ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Guardando…</>
+                : <><Plus size={16} /> Guardar equipo</>
               }
             </button>
           </div>
@@ -174,7 +206,7 @@ const CarritoPanel = ({ carrito, onRemove, onEnviar, sending, onClear }) => {
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-carrera-blue text-white text-sm font-semibold hover:bg-blue-900 transition-all duration-300 hover:scale-[1.02] active:scale-95 disabled:hover:scale-100 disabled:opacity-60 shadow-md"
         >
           {sending
-            ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Enviando…</>
+            ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Enviando…</>
             : <><Send size={14} /> Enviar Solicitud</>
           }
         </button>
@@ -183,18 +215,38 @@ const CarritoPanel = ({ carrito, onRemove, onEnviar, sending, onClear }) => {
   );
 };
 
-/* ── Página principal ─────────────────────────────────────────── */
+/* ── Página principal ───────────────────────────────────────────── */
 const Activos = () => {
-  const { data, loading, error, refetch } = useApi(getActivos);
-  const [modal,   setModal]   = useState(false);
-  const [query,   setQuery]   = useState('');
+  const { data: labsData } = useApi(getLaboratorios);
+  const laboratorios = labsData?.data ?? [];
+
+  /* Filtro de laboratorio — controla qué activos se cargan */
+  const [labFiltro, setLabFiltro] = useState(null); // null = todos
+
+  /* useApi acepta una función que recibe el argumento de refetch */
+  const fetchActivos = useCallback(
+    () => getActivos(labFiltro),
+    [labFiltro]
+  );
+  const { data, loading, error, refetch } = useApi(fetchActivos);
+
+  const [modal, setModal] = useState(false);
+  const [query, setQuery] = useState('');
   const [categoriaActiva, setCategoriaActiva] = useState('Todos');
-  const [carrito, setCarrito] = useState([]);   // equipos seleccionados para solicitud
+  const [carrito, setCarrito] = useState([]);
   const [sending, setSending] = useState(false);
 
-  const admin   = isAdmin();
-  const user    = getUser();
+  const admin  = isAdmin();
+  const staff  = isStaff();
+  const user   = getUser();
   const activos = data?.data ?? [];
+
+  /* Cambiar filtro de laboratorio — recarga automáticamente */
+  const handleLabFiltro = (val) => {
+    setLabFiltro(val ? Number(val) : null);
+    setCategoriaActiva('Todos');
+    setQuery('');
+  };
 
   const categoriasDinamicas = useMemo(() => {
     const ignorados = ['Instrumento', 'Equipo', 'instrumento', 'equipo'];
@@ -223,14 +275,14 @@ const Activos = () => {
   const handleCategoria = (cat) => { setCategoriaActiva(cat); pag.reset(); };
 
   /* Carrito */
-  const enCarrito   = (id) => carrito.some(a => a.id_activo === id);
-  const addCarrito  = (activo) => {
+  const enCarrito = (id) => carrito.some(a => a.id_activo === id);
+  const addCarrito = (activo) => {
     if (!enCarrito(activo.id_activo)) {
       setCarrito(c => [...c, activo]);
       toast.success(`${activo.nombre} añadido a la solicitud`, { position: 'bottom-center' });
     }
   };
-  const removeCarrito = (id)   => setCarrito(c => c.filter(a => a.id_activo !== id));
+  const removeCarrito = (id) => setCarrito(c => c.filter(a => a.id_activo !== id));
 
   const enviarSolicitud = async () => {
     if (!user?.id) { toast.error('No se pudo identificar al usuario. Vuelve a iniciar sesión.'); return; }
@@ -250,8 +302,8 @@ const Activos = () => {
 
   return (
     <div className="animate-in fade-in duration-500">
-      {/* Carrito flotante — solo para no-admins */}
-      {!admin && (
+      {/* Carrito flotante — solo para no-staff */}
+      {!staff && (
         <CarritoPanel
           carrito={carrito}
           onRemove={removeCarrito}
@@ -269,11 +321,37 @@ const Activos = () => {
             {!loading && !error && <span className="ml-2 text-carrera-blue font-semibold">({activos.length} equipos)</span>}
           </p>
         </div>
-        {/* Botón solo para Admin */}
-        {admin && (
+        {/* Botón solo para Staff (Admin + Técnico) */}
+        {staff && (
           <button onClick={() => setModal(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-carrera-blue text-white text-sm font-semibold rounded-xl hover:bg-blue-900 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 self-start sm:self-auto">
             <Plus size={16} /> Nuevo equipo
+          </button>
+        )}
+      </div>
+
+      {/* Filtro de laboratorio */}
+      <div className="flex flex-wrap items-center gap-3 mb-5 p-3.5 bg-white border border-gray-100 rounded-2xl shadow-sm">
+        <Building2 size={15} className="text-carrera-blue shrink-0" />
+        <span className="text-xs font-semibold text-gray-500 shrink-0">Laboratorio:</span>
+        <select
+          value={labFiltro ?? ''}
+          onChange={e => handleLabFiltro(e.target.value)}
+          className="flex-1 min-w-[180px] px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-carrera-blue/30 focus:border-carrera-blue text-sm text-gray-700 transition-all"
+        >
+          <option value="">Todos los laboratorios</option>
+          {laboratorios.map(l => (
+            <option key={l.id_laboratorio} value={l.id_laboratorio}>
+              {l.nombre_lab}{l.ubicacion ? ` · ${l.ubicacion}` : ''}
+            </option>
+          ))}
+        </select>
+        {labFiltro && (
+          <button
+            onClick={() => handleLabFiltro('')}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+          >
+            <X size={13} /> Limpiar
           </button>
         )}
       </div>
@@ -297,11 +375,10 @@ const Activos = () => {
           <button
             key={cat}
             onClick={() => handleCategoria(cat)}
-            className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 border ${
-              categoriaActiva === cat
+            className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 border ${categoriaActiva === cat
                 ? 'bg-carrera-blue text-white border-carrera-blue shadow-md'
                 : 'bg-white text-gray-500 border-gray-200 hover:bg-blue-50 hover:text-carrera-blue hover:border-blue-200'
-            }`}
+              }`}
           >
             {cat}
           </button>
@@ -356,7 +433,7 @@ const Activos = () => {
                       <thead>
                         <tr className="bg-gray-50/30 border-b border-gray-100">
                           {['Foto', 'Código', 'Nombre', 'Serie / MAC', 'Estado físico', 'Disponibilidad',
-                            ...(!admin ? ['Solicitar'] : [])
+                            ...(!staff ? ['Solicitar'] : [])
                           ].map(h => (
                             <th key={h} className="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                           ))}
@@ -376,9 +453,9 @@ const Activos = () => {
                             <td className="px-5 py-3 font-mono text-xs text-gray-500">{a.mac_o_serial}</td>
                             <td className="px-5 py-3"><EstadoBadge value={a.estado_fisico} /></td>
                             <td className="px-5 py-3"><DisponibilidadBadge value={a.disponibilidad} /></td>
-                            {!admin && (
+                            {!staff && (
                               <td className="px-5 py-3">
-                              {a.disponibilidad === 'Disponible' ? (
+                                {a.disponibilidad === 'Disponible' ? (
                                   enCarrito(a.id_activo) ? (
                                     <button
                                       onClick={() => removeCarrito(a.id_activo)}

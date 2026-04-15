@@ -20,10 +20,10 @@ const formatFecha = (iso) =>
 /* ── Badge estado ────────────────────────────────────────────── */
 const EstadoBadge = ({ value }) => {
   const map = {
-    'Pendiente': { cls: 'bg-blue-50 text-blue-700 border-blue-200',        icon: Clock },
-    'Activo':    { cls: 'bg-amber-50 text-amber-700 border-amber-200',     icon: Clock },
-    'Devuelto':  { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
-    'Rechazado': { cls: 'bg-red-50 text-red-600 border-red-200',           icon: X },
+    'Pendiente': { cls: 'bg-blue-50 text-blue-700 border-blue-200', icon: Clock },
+    'Activo': { cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
+    'Devuelto': { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
+    'Rechazado': { cls: 'bg-red-50 text-red-600 border-red-200', icon: X },
   };
   const { cls, icon: Icon } = map[value] ?? { cls: 'bg-gray-100 text-gray-600 border-gray-200', icon: Clock };
   return (
@@ -40,19 +40,19 @@ const ModalNuevoPrestamo = ({ onClose, onSuccess }) => {
 
   const [form, setForm] = useState({ id_activo: '', id_usuario: '', observaciones_salida: '' });
   const [saving, setSaving] = useState(false);
-  const [err,    setErr]    = useState(null);
+  const [err, setErr] = useState(null);
 
   const handle = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.id_activo)  { setErr('Selecciona un equipo disponible.'); return; }
+    if (!form.id_activo) { setErr('Selecciona un equipo disponible.'); return; }
     if (!form.id_usuario) { setErr('Ingresa el ID del usuario.'); return; }
     setSaving(true); setErr(null);
     try {
       await crearPrestamo({
-        id_activo:            Number(form.id_activo),
-        id_usuario:           Number(form.id_usuario),
+        id_activo: Number(form.id_activo),
+        id_usuario: Number(form.id_usuario),
         observaciones_salida: form.observaciones_salida,
       });
       toast.success('Préstamo registrado exitosamente.');
@@ -88,8 +88,8 @@ const ModalNuevoPrestamo = ({ onClose, onSuccess }) => {
             {loadingActivos ? (
               <div className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-400">
                 <svg className="animate-spin h-4 w-4 text-carrera-blue" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 Cargando equipos disponibles…
               </div>
@@ -128,8 +128,8 @@ const ModalNuevoPrestamo = ({ onClose, onSuccess }) => {
             <button type="submit" disabled={saving || loadingActivos || disponibles.length === 0}
               className="px-5 py-2.5 rounded-xl bg-carrera-blue text-white text-sm font-semibold hover:bg-blue-900 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-md">
               {saving
-                ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Registrando…</>
-                : <><Plus size={15}/> Registrar préstamo</>
+                ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Registrando…</>
+                : <><Plus size={15} /> Registrar préstamo</>
               }
             </button>
           </div>
@@ -164,11 +164,11 @@ const ModalAprobacion = ({ prestamo, onClose, onConfirm, loading }) => {
           </div>
           <div className="flex justify-end gap-3 pt-1">
             <button onClick={onClose} className="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancelar</button>
-            <button onClick={() => { if(obs.trim()) onConfirm(obs); else toast.error('Las observaciones de salida son requeridas.'); }} disabled={loading || !obs.trim()}
+            <button onClick={() => { if (obs.trim()) onConfirm(obs); else toast.error('Las observaciones de salida son requeridas.'); }} disabled={loading || !obs.trim()}
               className="px-5 py-2 rounded-xl bg-carrera-blue text-white text-sm font-semibold hover:bg-blue-900 transition-all duration-300 hover:scale-[1.02] active:scale-95 disabled:opacity-60 flex items-center gap-2 shadow-md">
               {loading
-                ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Procesando…</>
-                : <><ThumbsUp size={15}/> Aprobar y Entregar</>
+                ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Procesando…</>
+                : <><ThumbsUp size={15} /> Aprobar y Entregar</>
               }
             </button>
           </div>
@@ -207,8 +207,8 @@ const ModalDevolucion = ({ prestamo, onClose, onConfirm, loading }) => {
             <button onClick={() => onConfirm(obs)} disabled={loading}
               className="px-5 py-2 rounded-xl bg-carrera-green text-white text-sm font-semibold hover:bg-green-800 transition-colors disabled:opacity-60 flex items-center gap-2">
               {loading
-                ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Procesando…</>
-                : <><CheckCircle size={15}/> Confirmar devolución</>
+                ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Procesando…</>
+                : <><CheckCircle size={15} /> Confirmar devolución</>
               }
             </button>
           </div>
@@ -230,9 +230,9 @@ const exportarPDF = (prestamos) => {
   doc.text('UTN — Facultad Regional', 14, 17);
   doc.setFontSize(8); doc.setTextColor(200, 200, 200);
   doc.text(`Generado: ${ahora}`, 297 - 14, 17, { align: 'right' });
-  const activos   = prestamos.filter(p => p.estado_prestamo === 'Activo').length;
+  const activos = prestamos.filter(p => p.estado_prestamo === 'Activo').length;
   const devueltos = prestamos.filter(p => p.estado_prestamo === 'Devuelto').length;
-  const pendientes= prestamos.filter(p => p.estado_prestamo === 'Pendiente').length;
+  const pendientes = prestamos.filter(p => p.estado_prestamo === 'Pendiente').length;
   doc.setTextColor(60, 60, 60); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
   doc.text(`Total: ${prestamos.length}  |  Activos: ${activos}  |  Pendientes: ${pendientes}  |  Devueltos: ${devueltos}`, 14, 30);
   autoTable(doc, {
@@ -246,12 +246,12 @@ const exportarPDF = (prestamos) => {
     headStyles: { fillColor: [0, 51, 102], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'left' },
     bodyStyles: { fontSize: 8, textColor: [50, 50, 50] },
     alternateRowStyles: { fillColor: [248, 250, 252] },
-    columnStyles: { 0:{cellWidth:22},1:{cellWidth:22},2:{cellWidth:22},3:{cellWidth:38},4:{cellWidth:38},5:{cellWidth:'auto'},6:{cellWidth:26,fontStyle:'bold'} },
+    columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 22 }, 2: { cellWidth: 22 }, 3: { cellWidth: 38 }, 4: { cellWidth: 38 }, 5: { cellWidth: 'auto' }, 6: { cellWidth: 26, fontStyle: 'bold' } },
     didParseCell(data) {
       if (data.column.index === 6 && data.section === 'body') {
         const v = data.cell.raw;
-        if (v === 'Activo')    data.cell.styles.textColor = [180, 100, 0];
-        if (v === 'Devuelto')  data.cell.styles.textColor = [0, 100, 50];
+        if (v === 'Activo') data.cell.styles.textColor = [180, 100, 0];
+        if (v === 'Devuelto') data.cell.styles.textColor = [0, 100, 50];
         if (v === 'Pendiente') data.cell.styles.textColor = [0, 80, 160];
         if (v === 'Rechazado') data.cell.styles.textColor = [180, 0, 0];
       }
@@ -335,21 +335,21 @@ const TablaPrestamos = ({ items, total, pag, onDevolver, onAprobar, onRechazar, 
 /* ── Página principal ─────────────────────────────────────────── */
 const Prestamos = () => {
   const { data, loading, error, refetch } = useApi(getPrestamos);
-  const [selected,   setSelected]   = useState(null); // Para devolver
+  const [selected, setSelected] = useState(null); // Para devolver
   const [selectedAprobar, setSelectedAprobar] = useState(null); // Para aprobar
-  const [saving,     setSaving]     = useState(false);
+  const [saving, setSaving] = useState(false);
   const [modalNuevo, setModalNuevo] = useState(false);
 
-  const admin     = isAdmin();
+  const admin = isAdmin();
   const prestamos = data?.data ?? [];
   const pendientes = prestamos.filter(p => p.estado_prestamo === 'Pendiente');
-  const activos    = prestamos.filter(p => p.estado_prestamo === 'Activo');
-  const devueltos  = prestamos.filter(p => p.estado_prestamo === 'Devuelto');
+  const activos = prestamos.filter(p => p.estado_prestamo === 'Activo');
+  const devueltos = prestamos.filter(p => p.estado_prestamo === 'Devuelto');
   const rechazados = prestamos.filter(p => p.estado_prestamo === 'Rechazado');
 
   const pagPendientes = usePagination(pendientes, PAGE_SIZE);
-  const pagActivos    = usePagination(activos,    PAGE_SIZE);
-  const pagDevueltos  = usePagination(devueltos,  PAGE_SIZE);
+  const pagActivos = usePagination(activos, PAGE_SIZE);
+  const pagDevueltos = usePagination(devueltos, PAGE_SIZE);
   const pagRechazados = usePagination(rechazados, PAGE_SIZE);
 
   const handleConfirmDevolucion = async (observaciones_recepcion) => {
@@ -469,7 +469,7 @@ const Prestamos = () => {
                 )}
               </div>
               {pendientes.length === 0
-                ? <div className="py-10 text-center"><Clock size={32} className="text-gray-200 mx-auto mb-3"/><p className="text-gray-400 text-sm">No hay solicitudes pendientes.</p></div>
+                ? <div className="py-10 text-center"><Clock size={32} className="text-gray-200 mx-auto mb-3" /><p className="text-gray-400 text-sm">No hay solicitudes pendientes.</p></div>
                 : <TablaPrestamos items={pagPendientes.paginated} total={pendientes.length} pag={pagPendientes} onDevolver={setSelected} onAprobar={handleAprobar} onRechazar={handleRechazar} adminMode={admin} />
               }
             </div>
@@ -483,7 +483,7 @@ const Prestamos = () => {
               <span className="ml-1 bg-amber-200 text-amber-800 text-xs font-bold px-2 py-0.5 rounded-full">{activos.length}</span>
             </div>
             {activos.length === 0
-              ? <div className="py-14 text-center"><Clock size={36} className="text-gray-200 mx-auto mb-3"/><p className="text-gray-400 text-sm">No hay préstamos activos.</p></div>
+              ? <div className="py-14 text-center"><Clock size={36} className="text-gray-200 mx-auto mb-3" /><p className="text-gray-400 text-sm">No hay préstamos activos.</p></div>
               : <TablaPrestamos items={pagActivos.paginated} total={activos.length} pag={pagActivos} onDevolver={setSelected} onAprobar={handleAprobar} onRechazar={handleRechazar} adminMode={admin} />
             }
           </div>
@@ -496,7 +496,7 @@ const Prestamos = () => {
               <span className="ml-1 bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded-full">{devueltos.length}</span>
             </div>
             {devueltos.length === 0
-              ? <div className="py-14 text-center"><CheckCircle size={36} className="text-gray-200 mx-auto mb-3"/><p className="text-gray-400 text-sm">Aún no hay devoluciones.</p></div>
+              ? <div className="py-14 text-center"><CheckCircle size={36} className="text-gray-200 mx-auto mb-3" /><p className="text-gray-400 text-sm">Aún no hay devoluciones.</p></div>
               : <TablaPrestamos items={pagDevueltos.paginated} total={devueltos.length} pag={pagDevueltos} onDevolver={setSelected} onAprobar={handleAprobar} onRechazar={handleRechazar} adminMode={admin} />
             }
           </div>

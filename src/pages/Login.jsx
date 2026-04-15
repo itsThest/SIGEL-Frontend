@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../services/authService';
 import { Mail, Lock, LogIn, AlertCircle, FlaskConical } from 'lucide-react';
 
@@ -134,6 +134,16 @@ const Login = () => {
                   required
                 />
               </div>
+            </div>
+
+            {/* Enlace: ¿Olvidaste tu contraseña? */}
+            <div className="flex justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-xs text-carrera-blue hover:text-blue-900 font-medium hover:underline transition-colors"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
             </div>
 
             {/* Botón */}

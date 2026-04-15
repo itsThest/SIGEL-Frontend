@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Páginas públicas
-import Login    from './pages/Login';
-import Register from './pages/Register';
+import Login          from './pages/Login';
+import Register       from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword  from './pages/ResetPassword';
 
 // Guards y Layout
 import ProtectedRoute from './components/ProtectedRoute';
@@ -26,8 +28,10 @@ function App() {
         <Routes>
         {/* ── Rutas públicas ──────────────────────────── */}
         <Route path="/"         element={<Navigate to="/login" replace />} />
-        <Route path="/login"    element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login"            element={<Login />} />
+        <Route path="/register"         element={<Register />} />
+        <Route path="/forgot-password"  element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
 
         {/* ── Rutas protegidas (requieren token) ─────── */}
         <Route element={<ProtectedRoute />}>

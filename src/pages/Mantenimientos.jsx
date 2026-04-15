@@ -20,7 +20,7 @@ const Spinner = () => (
 /* ── Badge de estado ─────────────────────────────────────────── */
 const EstadoBadge = ({ value }) => {
   const map = {
-    'En Proceso': { cls: 'bg-yellow-50 text-yellow-700 border-yellow-200',  icon: Wrench },
+    'En Proceso': { cls: 'bg-yellow-50 text-yellow-700 border-yellow-200', icon: Wrench },
     'Finalizado': { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
   };
   const { cls, icon: Icon } = map[value] ?? { cls: 'bg-gray-100 text-gray-600 border-gray-200', icon: Wrench };
@@ -50,7 +50,7 @@ const ModalNuevoMantenimiento = ({ onClose, onSuccess }) => {
     detalles: '',
   });
   const [saving, setSaving] = useState(false);
-  const [err,    setErr]    = useState(null);
+  const [err, setErr] = useState(null);
 
   const handle = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
@@ -60,9 +60,9 @@ const ModalNuevoMantenimiento = ({ onClose, onSuccess }) => {
     setSaving(true); setErr(null);
     try {
       await registrarIngreso({
-        id_activo:          Number(form.id_activo),
+        id_activo: Number(form.id_activo),
         tipo_mantenimiento: form.tipo_mantenimiento,
-        detalles:           form.detalles,
+        detalles: form.detalles,
       });
       onSuccess();
     } catch (ex) {
@@ -102,8 +102,8 @@ const ModalNuevoMantenimiento = ({ onClose, onSuccess }) => {
             {loadingActivos ? (
               <div className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-400">
                 <svg className="animate-spin h-4 w-4 text-carrera-blue" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 Cargando equipos…
               </div>
@@ -168,8 +168,8 @@ const ModalNuevoMantenimiento = ({ onClose, onSuccess }) => {
               {saving ? (
                 <>
                   <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                   Registrando…
                 </>
@@ -214,8 +214,8 @@ const ModalFinalizar = ({ mant, onClose, onConfirm, loading }) => {
             <button onClick={() => onConfirm(detalles)} disabled={loading || !detalles.trim()}
               className="px-5 py-2 rounded-xl bg-carrera-green text-white text-sm font-semibold hover:bg-green-800 transition-colors disabled:opacity-50 flex items-center gap-2">
               {loading
-                ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Guardando…</>
-                : <><CheckCircle size={15}/> Finalizar</>
+                ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Guardando…</>
+                : <><CheckCircle size={15} /> Finalizar</>
               }
             </button>
           </div>
@@ -264,12 +264,12 @@ const TablaMantenimientos = ({ items, onFinalizar }) => (
 /* ── Página principal ─────────────────────────────────────────── */
 const Mantenimientos = () => {
   const { data, loading, error, refetch } = useApi(getMantenimientos);
-  const [modalNuevo,   setModalNuevo]   = useState(false);
-  const [selectedFin,  setSelectedFin]  = useState(null);
-  const [savingFin,    setSavingFin]    = useState(false);
+  const [modalNuevo, setModalNuevo] = useState(false);
+  const [selectedFin, setSelectedFin] = useState(null);
+  const [savingFin, setSavingFin] = useState(false);
 
-  const lista      = data?.data ?? [];
-  const enProceso  = lista.filter(m => m.estado_mantenimiento === 'En Proceso');
+  const lista = data?.data ?? [];
+  const enProceso = lista.filter(m => m.estado_mantenimiento === 'En Proceso');
   const finalizados = lista.filter(m => m.estado_mantenimiento === 'Finalizado');
 
   const handleFinalizar = async (detalles_reparacion) => {
@@ -329,7 +329,7 @@ const Mantenimientos = () => {
               <span className="ml-1 bg-yellow-200 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded-full">{enProceso.length}</span>
             </div>
             {enProceso.length === 0
-              ? <div className="py-14 text-center"><Wrench size={36} className="text-gray-200 mx-auto mb-3"/><p className="text-gray-400 text-sm">No hay equipos en mantenimiento activo.</p></div>
+              ? <div className="py-14 text-center"><Wrench size={36} className="text-gray-200 mx-auto mb-3" /><p className="text-gray-400 text-sm">No hay equipos en mantenimiento activo.</p></div>
               : <TablaMantenimientos items={enProceso} onFinalizar={setSelectedFin} />
             }
           </div>
@@ -342,7 +342,7 @@ const Mantenimientos = () => {
               <span className="ml-1 bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded-full">{finalizados.length}</span>
             </div>
             {finalizados.length === 0
-              ? <div className="py-14 text-center"><CheckCircle size={36} className="text-gray-200 mx-auto mb-3"/><p className="text-gray-400 text-sm">Aún no hay mantenimientos finalizados.</p></div>
+              ? <div className="py-14 text-center"><CheckCircle size={36} className="text-gray-200 mx-auto mb-3" /><p className="text-gray-400 text-sm">Aún no hay mantenimientos finalizados.</p></div>
               : <TablaMantenimientos items={finalizados} onFinalizar={setSelectedFin} />
             }
           </div>

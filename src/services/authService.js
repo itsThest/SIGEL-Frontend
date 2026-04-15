@@ -10,3 +10,12 @@ export const register = async (data) => {
   return response.data;
 };
 
+export const forgotPassword = async (correo) => {
+  const response = await api.post('/auth/forgot-password', { correo });
+  return response.data;
+};
+
+export const resetPassword = async (token, nuevaPassword) => {
+  const response = await api.post('/auth/reset-password', { token, nuevaPassword });
+  return response.data;
+};
