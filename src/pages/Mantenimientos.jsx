@@ -20,8 +20,9 @@ const Spinner = () => (
 /* ── Badge de estado ─────────────────────────────────────────── */
 const EstadoBadge = ({ value }) => {
   const map = {
-    'En Proceso': { cls: 'bg-yellow-50 text-yellow-700 border-yellow-200', icon: Wrench },
-    'Finalizado': { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
+    'En Proceso':   { cls: 'bg-yellow-50 text-yellow-700 border-yellow-200',    icon: Wrench },
+    'Verificación': { cls: 'bg-purple-100 text-purple-800 border-purple-200',   icon: Wrench }, // ← NUEVO
+    'Finalizado':   { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
   };
   const { cls, icon: Icon } = map[value] ?? { cls: 'bg-gray-100 text-gray-600 border-gray-200', icon: Wrench };
   return (
@@ -37,6 +38,7 @@ const TIPOS_MANT = [
   'Mantenimiento preventivo - Inspección integral del equipo',
   'Mantenimiento preventivo especializado',
   'Calibración de equipos',
+  'Verificación', // ← NUEVO
 ];
 
 const ModalNuevoMantenimiento = ({ onClose, onSuccess }) => {
@@ -268,9 +270,10 @@ const Mantenimientos = () => {
   const [selectedFin, setSelectedFin] = useState(null);
   const [savingFin, setSavingFin] = useState(false);
 
-  const lista = data?.data ?? [];
-  const enProceso = lista.filter(m => m.estado_mantenimiento === 'En Proceso');
-  const finalizados = lista.filter(m => m.estado_mantenimiento === 'Finalizado');
+  const lista        = data?.data ?? [];
+  const enProceso    = lista.filter(m => m.estado_mantenimiento === 'En Proceso');
+  const verificacion = lista.filter(m => m.estado_mantenimiento === 'Verificación'); // ← NUEVO
+  const finalizados  = lista.filter(m => m.estado_mantenimiento === 'Finalizado');
 
   const handleFinalizar = async (detalles_reparacion) => {
     setSavingFin(true);
@@ -333,6 +336,18 @@ const Mantenimientos = () => {
               : <TablaMantenimientos items={enProceso} onFinalizar={setSelectedFin} />
             }
           </div>
+
+          {/* ← NUEVO: En verificación */}
+          {verificacion.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+              <div className="px-6 py-4 border-b border-purple-100 bg-purple-50 flex items-center gap-2">
+                <Wrench size={15} className="text-purple-700" />
+                <h2 className="text-sm font-bold text-purple-700">Verificación</h2>
+                <span className="ml-1 bg-purple-200 text-purple-800 text-xs font-bold px-2 py-0.5 rounded-full">{verificacion.length}</span>
+              </div>
+              <TablaMantenimientos items={verificacion} onFinalizar={setSelectedFin} />
+            </div>
+          )}
 
           {/* Historial finalizado */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">

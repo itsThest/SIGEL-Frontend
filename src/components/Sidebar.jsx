@@ -5,6 +5,7 @@ import {
   Package,
   FlaskConical,
   ClipboardList,
+  Shield,
   LogOut,
   ChevronRight,
   X,
@@ -12,10 +13,11 @@ import {
 import { isAdmin } from '../utils/auth';
 
 const ALL_NAV_ITEMS = [
-  { to: '/dashboard',      label: 'Dashboard',      icon: LayoutDashboard, adminOnly: false },
-  { to: '/activos',        label: 'Activos',         icon: Package,         adminOnly: false },
-  { to: '/prestamos',      label: 'Préstamos',       icon: ClipboardList,   adminOnly: false },
-  { to: '/mantenimientos', label: 'Mantenimientos',  icon: FlaskConical,    adminOnly: true  },
+  { to: '/dashboard',      label: 'Dashboard',       icon: LayoutDashboard, adminOnly: false },
+  { to: '/activos',        label: 'Activos',          icon: Package,         adminOnly: false },
+  { to: '/prestamos',      label: 'Préstamos',        icon: ClipboardList,   adminOnly: false },
+  { to: '/mantenimientos', label: 'Mantenimientos',   icon: FlaskConical,    adminOnly: true  },
+  { to: '/administracion', label: 'Administración',   icon: Shield,          adminOnly: true  },
 ];
 
 const Sidebar = ({ isOpen, onClose }) => {

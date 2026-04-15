@@ -44,3 +44,9 @@ export const isEstudiante = () => {
   return u.rol === 'Estudiante' || u.tipo_usuario === 'Estudiante';
 };
 
+/**
+ * Devuelve el nivel_acceso numérico del usuario (1-5).
+ * El backend lo incluye en el JWT desde authController.js.
+ * Fallback a 1 si no está presente (sesiones antiguas).
+ */
+export const getNivelAcceso = () => getUser()?.nivel_acceso ?? 1;

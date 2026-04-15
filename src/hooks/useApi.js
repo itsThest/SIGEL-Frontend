@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * useApi — hook genérico para llamadas al backend.
@@ -10,11 +10,15 @@ const useApi = (serviceFn, autoFetch = true) => {
   const [loading, setLoading] = useState(autoFetch);
   const [error, setError]     = useState(null);
 
+  // Ref para anclar la función y evitar re-renders infinitos
+  const fnRef = useRef(serviceFn);
+  useEffect(() => { fnRef.current = serviceFn; }, [serviceFn]);
+
   const fetch = useCallback(async (...args) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await serviceFn(...args);
+      const res = await fnRef.current(...args);
       setData(res.data);
       return res.data;
     } catch (err) {
@@ -23,11 +27,11 @@ const useApi = (serviceFn, autoFetch = true) => {
     } finally {
       setLoading(false);
     }
-  }, [serviceFn]);
+  }, []); // ← sin dependencias: la fn se lee siempre desde fnRef
 
   useEffect(() => {
     if (autoFetch) fetch();
-  }, [autoFetch, fetch]);
+  }, []); // ← solo al montar
 
   return { data, loading, error, refetch: fetch };
 };

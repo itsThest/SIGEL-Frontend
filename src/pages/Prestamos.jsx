@@ -9,6 +9,8 @@ import usePagination from '../hooks/usePagination';
 import Pagination from '../components/Pagination';
 import { getPrestamos, crearPrestamo, aprobarPrestamo, rechazarPrestamo, devolverPrestamo } from '../services/prestamosService';
 import { getActivos } from '../services/activosService';
+import { getMaterias } from '../services/materiasService';
+import { getListaUsuarios } from '../services/usuariosService'; // ← NUEVO
 import { isAdmin } from '../utils/auth';
 
 const PAGE_SIZE = 10;
@@ -35,10 +37,26 @@ const EstadoBadge = ({ value }) => {
 
 /* ── Modal: Nuevo Préstamo (Admin directo) ───────────────────── */
 const ModalNuevoPrestamo = ({ onClose, onSuccess }) => {
-  const { data: activosData, loading: loadingActivos } = useApi(getActivos);
-  const disponibles = (activosData?.data ?? []).filter(a => a.disponibilidad === 'Disponible');
+  const { data: activosData,  loading: loadingActivos,  error: errorActivos   } = useApi(getActivos);
+  const { data: materiasData, loading: loadingMaterias, error: errorMaterias  } = useApi(getMaterias);
+  const { data: usuariosData, loading: loadingUsuarios, error: errorUsuarios  } = useApi(getListaUsuarios);
 
-  const [form, setForm] = useState({ id_activo: '', id_usuario: '', observaciones_salida: '' });
+  // Debug: verificar qué llega de cada endpoint
+  console.log('[Préstamos] materiasData raw:', materiasData);
+  console.log('[Préstamos] usuariosData raw:', usuariosData);
+  if (errorMaterias)  console.error('[Préstamos] Error materias:',  errorMaterias);
+  if (errorUsuarios)  console.error('[Préstamos] Error usuarios:',  errorUsuarios);
+
+  // El backend devuelve { success, data: [...] } — useApi guarda res.data (el objeto entero)
+  const disponibles = Array.isArray(activosData?.data)  ? activosData.data.filter(a => a.disponibilidad === 'Disponible') : [];
+  const materias    = Array.isArray(materiasData?.data)  ? materiasData.data  : [];
+  const usuarios    = Array.isArray(usuariosData?.data)  ? usuariosData.data  : [];
+
+  console.log('[Préstamos] Materias cargadas:', materias);
+  console.log('[Préstamos] Usuarios cargados:', usuarios);
+
+
+  const [form, setForm] = useState({ id_activo: '', id_usuario: '', id_materia: '', observaciones_salida: '' });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
 
@@ -46,13 +64,15 @@ const ModalNuevoPrestamo = ({ onClose, onSuccess }) => {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.id_activo) { setErr('Selecciona un equipo disponible.'); return; }
-    if (!form.id_usuario) { setErr('Ingresa el ID del usuario.'); return; }
+    if (!form.id_activo)  { setErr('Selecciona un equipo disponible.'); return; }
+    if (!form.id_usuario) { setErr('Selecciona el usuario / estudiante.'); return; }
+    if (!form.id_materia) { setErr('Selecciona la materia del préstamo.'); return; }
     setSaving(true); setErr(null);
     try {
       await crearPrestamo({
-        id_activo: Number(form.id_activo),
+        id_activo:  Number(form.id_activo),
         id_usuario: Number(form.id_usuario),
+        id_materia: Number(form.id_materia), // ← NUEVO
         observaciones_salida: form.observaciones_salida,
       });
       toast.success('Préstamo registrado exitosamente.');
@@ -108,10 +128,64 @@ const ModalNuevoPrestamo = ({ onClose, onSuccess }) => {
               </select>
             )}
           </div>
+          {/* Usuario / Estudiante — selector con nombre + rol + semestre */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">ID del usuario / estudiante <span className="text-utn-red">*</span></label>
-            <input type="number" min="1" name="id_usuario" value={form.id_usuario}
-              onChange={handle} required placeholder="Ej: 1" className={inputCls} />
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+              Usuario / Estudiante <span className="text-utn-red">*</span>
+            </label>
+            {loadingUsuarios ? (
+              <div className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-400">
+                <svg className="animate-spin h-4 w-4 text-carrera-blue" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Cargando usuarios…
+              </div>
+            ) : usuarios.length === 0 ? (
+              <div className="px-3 py-2.5 border border-amber-200 rounded-xl bg-amber-50 text-sm text-amber-700">
+                No hay usuarios registrados en el sistema.
+              </div>
+            ) : (
+              <select name="id_usuario" value={form.id_usuario} onChange={handle} required className={inputCls}>
+                <option value="">— Selecciona un usuario —</option>
+                {usuarios.map(u => {
+                  // nombre_rol viene directo del JOIN SQL (no es Rol?.nombre_rol de Sequelize)
+                  const rol      = u.nombre_rol || 'Usuario';
+                  const semester = u.semestre   ? ` (Semestre ${u.semestre})` : '';
+                  const label    = `${u.nombres} ${u.apellidos} — ${rol}${semester}`;
+                  return (
+                    <option key={u.id_usuario} value={u.id_usuario}>{label}</option>
+                  );
+                })}
+              </select>
+            )}
+          </div>
+
+          {/* ← NUEVO: Selector de Materia */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Materia <span className="text-utn-red">*</span></label>
+            {loadingMaterias ? (
+              <div className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-400">
+                <svg className="animate-spin h-4 w-4 text-carrera-blue" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Cargando materias…
+              </div>
+            ) : materias.length === 0 ? (
+              <div className="px-3 py-2.5 border border-amber-200 rounded-xl bg-amber-50 text-sm text-amber-700">
+                No hay materias registradas en el sistema.
+              </div>
+            ) : (
+              <select name="id_materia" value={form.id_materia} onChange={handle} required className={inputCls}>
+                <option value="">— Selecciona una materia —</option>
+                {materias.map(m => (
+                  <option key={m.id_materia} value={m.id_materia}>
+                    {m.nombre_materia}{m.semestre ? ` · Sem. ${m.semestre}` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Observaciones de salida <span className="text-gray-400 font-normal">(opcional)</span></label>

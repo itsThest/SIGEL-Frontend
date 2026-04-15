@@ -16,6 +16,7 @@ import Dashboard      from './pages/Dashboard';
 import Activos        from './pages/Activos';
 import Prestamos      from './pages/Prestamos';
 import Mantenimientos from './pages/Mantenimientos';
+import Administracion from './pages/Administracion';
 import Profile        from './pages/Profile';
 
 import { Toaster } from 'react-hot-toast';
@@ -43,7 +44,8 @@ function App() {
 
             {/* Solo Administradores */}
             <Route element={<AdminRoute />}>
-              <Route path="/mantenimientos" element={<Mantenimientos />} />
+              <Route path="/mantenimientos"  element={<Mantenimientos />} />
+              <Route path="/administracion"  element={<Administracion />} />
             </Route>
           </Route>
         </Route>
