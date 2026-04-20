@@ -3,12 +3,12 @@ import {
   Shield, Users, BookOpen, GraduationCap, ArrowUpCircle,
   Snowflake, AlertTriangle, CheckCircle, X, Loader2,
   Search, Edit2, ChevronRight, Info, UserCheck, UserX,
-  LayoutList,
+  LayoutList, Plus,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useApi from '../hooks/useApi';
 import { getUsuariosAdmin, gestionarUsuario, avanzarSemestres } from '../services/usuariosService';
-import { getMaterias } from '../services/materiasService';
+import { getMaterias, crearMateria, editarMateria } from '../services/materiasService';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    UTILIDADES
@@ -518,9 +518,103 @@ const SEMESTRE_COLORS = [
   'from-orange-500 to-orange-600',
 ];
 
+/* ── Modal de creación/edición de materia ── */
+const ModalMateria = ({ materia, onClose, onSave }) => {
+  const [form, setForm] = useState({
+    nombre_materia: materia?.nombre_materia || '',
+    semestre:       materia?.semestre || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr]       = useState(null);
+
+  const isEdit = !!materia;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setSaving(true); setErr(null);
+    try {
+      const body = {
+        nombre_materia: form.nombre_materia.trim(),
+        semestre: form.semestre ? Number(form.semestre) : null,
+      };
+      if (isEdit) {
+        await onSave(materia.id_materia, body);
+      } else {
+        await onSave(null, body);
+      }
+    } catch (ex) {
+      setErr(ex.response?.data?.error ?? 'Error al guardar la materia.');
+    } finally { setSaving(false); }
+  };
+
+  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-carrera-blue/30 focus:border-carrera-blue text-sm transition-all';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-6 py-4 bg-carrera-blue">
+          <h2 className="text-sm font-bold text-white flex items-center gap-2">
+            {isEdit ? <Edit2 size={14} /> : <Plus size={14} />} 
+            {isEdit ? 'Editar materia' : 'Nueva materia'}
+          </h2>
+          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="p-6 space-y-5">
+          {err && (
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2.5 rounded-xl text-sm">
+              <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />{err}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nombre de la materia *</label>
+            <input
+              type="text"
+              required
+              value={form.nombre_materia}
+              onChange={e => setForm(f => ({ ...f, nombre_materia: e.target.value }))}
+              placeholder="Ej: Redes de Comunicaciones"
+              className={inputCls}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Semestre (1 al 8)</label>
+            <input
+              type="number"
+              min={1} max={8}
+              value={form.semestre}
+              onChange={e => setForm(f => ({ ...f, semestre: e.target.value }))}
+              placeholder="Ej: 4"
+              className={inputCls}
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2 border-t border-gray-100">
+            <button type="button" onClick={onClose}
+              className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+              Cancelar
+            </button>
+            <button type="submit" disabled={saving || !form.nombre_materia.trim()}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-carrera-blue text-white text-sm font-semibold hover:bg-blue-900 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm">
+              {saving ? <><Loader2 size={14} className="animate-spin" />Guardando…</> : <><CheckCircle size={14} />{isEdit ? 'Guardar' : 'Crear'}</>}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const TabMallaCurricular = () => {
-  const { data, loading, error } = useApi(getMaterias);
+  const { data, loading, error, refetch } = useApi(getMaterias);
   const materias = data?.data ?? [];
+
+  const [modalMateria, setModalMateria] = useState(false);
+  const [editandoMateria, setEditandoMateria] = useState(null);
 
   // Agrupar por semestre
   const porSemestre = useMemo(() => {
@@ -539,6 +633,19 @@ const TabMallaCurricular = () => {
     });
   }, [materias]);
 
+  const handleSaveMateria = async (id, body) => {
+    if (id) {
+      await editarMateria(id, body);
+      toast.success('Materia actualizada correctamente.');
+    } else {
+      await crearMateria(body);
+      toast.success('Materia creada correctamente.');
+    }
+    setModalMateria(false);
+    setEditandoMateria(null);
+    refetch();
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center py-14">
       <Loader2 size={28} className="animate-spin text-carrera-blue opacity-50" />
@@ -553,9 +660,25 @@ const TabMallaCurricular = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-xs text-gray-400 bg-gray-50 border border-gray-100 px-4 py-2.5 rounded-xl">
-        <LayoutList size={13} />
-        <span>Vista de solo lectura — {materias.length} materias en la malla curricular</span>
+      {(modalMateria || editandoMateria) && (
+        <ModalMateria
+          materia={editandoMateria}
+          onClose={() => { setModalMateria(false); setEditandoMateria(null); }}
+          onSave={handleSaveMateria}
+        />
+      )}
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50 border border-gray-100 px-4 py-3 rounded-xl">
+        <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
+          <LayoutList size={14} className="text-gray-400" />
+          <span>Malla Curricular ({materias.length} materias)</span>
+        </div>
+        <button
+          onClick={() => setModalMateria(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-carrera-blue text-white text-xs font-semibold rounded-lg hover:bg-blue-900 transition-all shadow-sm"
+        >
+          <Plus size={14} /> Nueva Materia
+        </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -577,11 +700,20 @@ const TabMallaCurricular = () => {
               {/* Lista de materias */}
               <ul className="divide-y divide-gray-50">
                 {lista.map((m, i) => (
-                  <li key={m.id_materia} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50/60 transition-colors group">
-                    <span className="w-5 h-5 rounded-full bg-gray-100 group-hover:bg-carrera-blue/10 text-gray-400 group-hover:text-carrera-blue text-[10px] font-bold flex items-center justify-center flex-shrink-0 transition-colors">
-                      {i + 1}
-                    </span>
-                    <span className="text-xs text-gray-700 font-medium leading-snug">{m.nombre_materia}</span>
+                  <li key={m.id_materia} className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-gray-50/60 transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <span className="w-5 h-5 rounded-full bg-gray-100 group-hover:bg-carrera-blue/10 text-gray-400 group-hover:text-carrera-blue text-[10px] font-bold flex items-center justify-center flex-shrink-0 transition-colors">
+                        {i + 1}
+                      </span>
+                      <span className="text-xs text-gray-700 font-medium leading-snug">{m.nombre_materia}</span>
+                    </div>
+                    <button
+                      onClick={() => setEditandoMateria(m)}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-carrera-blue hover:bg-carrera-blue/10 rounded-lg transition-all"
+                      title="Editar materia"
+                    >
+                      <Edit2 size={13} />
+                    </button>
                   </li>
                 ))}
               </ul>
