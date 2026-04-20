@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Plus, X, AlertTriangle, ImageOff, Search, Package, ShoppingCart, Send, CheckCircle, Building2 } from 'lucide-react';
+import { Plus, X, AlertTriangle, ImageOff, Search, Package, ShoppingCart, Send, CheckCircle, Building2, FileDown, CalendarRange } from 'lucide-react';
 import toast from 'react-hot-toast';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import useApi from '../hooks/useApi';
@@ -9,6 +9,8 @@ import { getActivos, crearActivo } from '../services/activosService';
 import { getLaboratorios } from '../services/laboratoriosService';
 import { crearPrestamo } from '../services/prestamosService';
 import { isAdmin, isStaff, getUser } from '../utils/auth';
+import { exportToExcel, mapActivosParaExcel } from '../services/excelService';
+import { generarReportePDF } from '../utils/pdfService';
 
 const PAGE_SIZE = 10;
 
@@ -220,13 +222,22 @@ const Activos = () => {
   const { data: labsData } = useApi(getLaboratorios);
   const laboratorios = labsData?.data ?? [];
 
-  /* Filtro de laboratorio — controla qué activos se cargan */
-  const [labFiltro, setLabFiltro] = useState(null); // null = todos
+  /* Filtro de laboratorio */
+  const [labFiltro, setLabFiltro] = useState(null);
 
-  /* useApi acepta una función que recibe el argumento de refetch */
+  /* Filtros de fecha (inputs) */
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin,    setFechaFin]    = useState('');
+  /* Filtros de fecha aplicados (los enviados al backend) */
+  const [fechasActivas, setFechasActivas] = useState({});
+
+  /* fetchActivos reactivo: se regenera si cambia lab o fechas activas */
   const fetchActivos = useCallback(
-    () => getActivos(labFiltro),
-    [labFiltro]
+    () => getActivos({
+      ...(labFiltro ? { id_laboratorio: labFiltro } : {}),
+      ...fechasActivas,
+    }),
+    [labFiltro, fechasActivas]
   );
   const { data, loading, error, refetch } = useApi(fetchActivos);
 
@@ -246,6 +257,37 @@ const Activos = () => {
     setLabFiltro(val ? Number(val) : null);
     setCategoriaActiva('Todos');
     setQuery('');
+  };
+
+  /* Aplicar / limpiar filtros de fecha */
+  const aplicarFechas = () => {
+    const p = {};
+    if (fechaInicio) p.fechaInicio = fechaInicio;
+    if (fechaFin)    p.fechaFin    = fechaFin;
+    setFechasActivas(p);
+  };
+  const limpiarFechas = () => {
+    setFechaInicio('');
+    setFechaFin('');
+    setFechasActivas({});
+  };
+
+  /** Exporta el inventario visible a PDF */
+  const exportarPDF = () => {
+    const columnas = ['Código', 'Nombre', 'Tipo', 'Serie / MAC', 'Estado Físico', 'Disponibilidad', 'Laboratorio'];
+    const datos = activos.map(a => [
+      a.codigo_institucional,
+      a.nombre,
+      a.tipo,
+      a.mac_o_serial,
+      a.estado_fisico || '—',
+      a.disponibilidad,
+      a.nombre_lab || '—',
+    ]);
+    const rango = (fechasActivas.fechaInicio || fechasActivas.fechaFin)
+      ? { inicio: fechasActivas.fechaInicio || 'inicio', fin: fechasActivas.fechaFin || 'actual' }
+      : null;
+    generarReportePDF('Reporte de Activos — Inventario', columnas, datos, rango, 'Reporte_Activos');
   };
 
   const categoriasDinamicas = useMemo(() => {
@@ -323,15 +365,33 @@ const Activos = () => {
         </div>
         {/* Botón solo para Staff (Admin + Técnico) */}
         {staff && (
-          <button onClick={() => setModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-carrera-blue text-white text-sm font-semibold rounded-xl hover:bg-blue-900 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 self-start sm:self-auto">
-            <Plus size={16} /> Nuevo equipo
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <button
+              onClick={exportarPDF}
+              disabled={activos.length === 0}
+              title="Exportar a PDF"
+              className="flex items-center gap-2 px-4 py-2.5 bg-utn-red text-white text-sm font-semibold rounded-xl hover:bg-red-700 shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <FileDown size={16} /> PDF
+            </button>
+            <button
+              onClick={() => exportToExcel(mapActivosParaExcel(activos), 'Inventario_Activos', 'Activos')}
+              disabled={activos.length === 0}
+              title="Exportar a Excel"
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <FileDown size={16} /> Excel
+            </button>
+            <button onClick={() => setModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-carrera-blue text-white text-sm font-semibold rounded-xl hover:bg-blue-900 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 active:scale-95">
+              <Plus size={16} /> Nuevo equipo
+            </button>
+          </div>
         )}
       </div>
 
       {/* Filtro de laboratorio */}
-      <div className="flex flex-wrap items-center gap-3 mb-5 p-3.5 bg-white border border-gray-100 rounded-2xl shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 mb-3 p-3.5 bg-white border border-gray-100 rounded-2xl shadow-sm">
         <Building2 size={15} className="text-carrera-blue shrink-0" />
         <span className="text-xs font-semibold text-gray-500 shrink-0">Laboratorio:</span>
         <select
@@ -355,6 +415,50 @@ const Activos = () => {
           </button>
         )}
       </div>
+
+      {/* ── Filtros de fecha de registro ────────────────────────────── */}
+      {staff && (
+        <div className="flex flex-wrap items-end gap-3 mb-5 p-3.5 bg-white border border-gray-100 rounded-2xl shadow-sm">
+          <CalendarRange size={15} className="text-carrera-blue self-center shrink-0" />
+          <span className="text-xs font-semibold text-gray-500 self-center shrink-0">Filtrar por fecha de registro:</span>
+          <div className="flex flex-wrap items-end gap-3 flex-1">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Desde</label>
+              <input
+                type="date"
+                value={fechaInicio}
+                max={fechaFin || undefined}
+                onChange={e => setFechaInicio(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-carrera-blue/30 focus:border-carrera-blue text-sm transition-all"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Hasta</label>
+              <input
+                type="date"
+                value={fechaFin}
+                min={fechaInicio || undefined}
+                onChange={e => setFechaFin(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-carrera-blue/30 focus:border-carrera-blue text-sm transition-all"
+              />
+            </div>
+            <button
+              onClick={aplicarFechas}
+              className="flex items-center gap-1.5 px-4 py-2 bg-carrera-blue text-white text-sm font-semibold rounded-xl hover:bg-blue-900 transition-colors shadow-sm"
+            >
+              Filtrar
+            </button>
+            {(fechasActivas.fechaInicio || fechasActivas.fechaFin) && (
+              <button
+                onClick={limpiarFechas}
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-utn-red transition-colors"
+              >
+                <X size={13} /> Limpiar filtro
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Barra de búsqueda */}
       <div className="relative mb-5">

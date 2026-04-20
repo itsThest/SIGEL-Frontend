@@ -10,8 +10,9 @@ import Pagination from '../components/Pagination';
 import { getPrestamos, crearPrestamo, aprobarPrestamo, rechazarPrestamo, devolverPrestamo } from '../services/prestamosService';
 import { getActivos } from '../services/activosService';
 import { getMaterias } from '../services/materiasService';
-import { getListaUsuarios } from '../services/usuariosService'; // ← NUEVO
+import { getListaUsuarios } from '../services/usuariosService';
 import { isAdmin } from '../utils/auth';
+import { exportToExcel, mapPrestamosParaExcel } from '../services/excelService';
 
 const PAGE_SIZE = 10;
 
@@ -60,7 +61,29 @@ const ModalNuevoPrestamo = ({ onClose, onSuccess }) => {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
 
-  const handle = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  // Deriva el objeto usuario seleccionado para leer su semestre
+  const usuarioSeleccionado = form.id_usuario
+    ? usuarios.find(u => String(u.id_usuario) === String(form.id_usuario))
+    : null;
+
+  // Grupos de materias según el semestre del usuario seleccionado
+  const semestreUsuario = usuarioSeleccionado?.semestre ?? null;
+  const materiasDelSemestre = semestreUsuario
+    ? materias.filter(m => m.semestre === semestreUsuario)
+    : [];
+  const otrasMaterias = semestreUsuario
+    ? materias.filter(m => m.semestre !== semestreUsuario)
+    : materias;
+
+  const handle = (e) => {
+    const { name, value } = e.target;
+    // Si cambia el usuario, reinicia la materia para evitar selección inconsistente
+    if (name === 'id_usuario') {
+      setForm(f => ({ ...f, id_usuario: value, id_materia: '' }));
+    } else {
+      setForm(f => ({ ...f, [name]: value }));
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -161,9 +184,16 @@ const ModalNuevoPrestamo = ({ onClose, onSuccess }) => {
             )}
           </div>
 
-          {/* ← NUEVO: Selector de Materia */}
+          {/* ← Selector de Materia inteligente: agrupa por semestre del usuario */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Materia <span className="text-utn-red">*</span></label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+              Materia <span className="text-utn-red">*</span>
+              {semestreUsuario && (
+                <span className="ml-2 text-xs font-normal text-carrera-blue/80">
+                  · Semestre {semestreUsuario} del usuario resaltado
+                </span>
+              )}
+            </label>
             {loadingMaterias ? (
               <div className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-400">
                 <svg className="animate-spin h-4 w-4 text-carrera-blue" fill="none" viewBox="0 0 24 24">
@@ -176,7 +206,31 @@ const ModalNuevoPrestamo = ({ onClose, onSuccess }) => {
               <div className="px-3 py-2.5 border border-amber-200 rounded-xl bg-amber-50 text-sm text-amber-700">
                 No hay materias registradas en el sistema.
               </div>
+            ) : semestreUsuario ? (
+              /* ── Modo agrupado: el usuario tiene semestre ── */
+              <select name="id_materia" value={form.id_materia} onChange={handle} required className={inputCls}>
+                <option value="">— Selecciona una materia —</option>
+                {materiasDelSemestre.length > 0 && (
+                  <optgroup label={`📚 Materias de su Semestre (Sem. ${semestreUsuario})`}>
+                    {materiasDelSemestre.map(m => (
+                      <option key={m.id_materia} value={m.id_materia}>
+                        {m.nombre_materia}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {otrasMaterias.length > 0 && (
+                  <optgroup label="📂 Otras Materias (adelanto / recuperación)">
+                    {otrasMaterias.map(m => (
+                      <option key={m.id_materia} value={m.id_materia}>
+                        {m.nombre_materia}{m.semestre ? ` · Sem. ${m.semestre}` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
             ) : (
+              /* ── Modo simple: sin semestre (Docente, Admin, etc.) ── */
               <select name="id_materia" value={form.id_materia} onChange={handle} required className={inputCls}>
                 <option value="">— Selecciona una materia —</option>
                 {materias.map(m => (
@@ -513,6 +567,14 @@ const Prestamos = () => {
               className="flex items-center gap-2 px-4 py-2.5 bg-carrera-green text-white text-sm font-semibold rounded-xl hover:bg-green-800 shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <FileDown size={16} /> Exportar PDF
+            </button>
+            <button
+              onClick={() => exportToExcel(mapPrestamosParaExcel(prestamos), 'Reporte_Prestamos', 'Préstamos')}
+              disabled={prestamos.length === 0}
+              title="Exportar a Excel"
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <FileDown size={16} /> Excel
             </button>
           </div>
         )}

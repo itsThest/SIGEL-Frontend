@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { AlertTriangle, Wrench, CheckCircle, X, Plus } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { AlertTriangle, Wrench, CheckCircle, X, Plus, FileDown, CalendarRange } from 'lucide-react';
 import useApi from '../hooks/useApi';
 import { getMantenimientos, registrarIngreso, registrarSalida } from '../services/mantenimientosService';
 import { getActivos } from '../services/activosService';
+import { exportToExcel, mapMantenimientosParaExcel } from '../services/excelService';
+import { generarReportePDF } from '../utils/pdfService';
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 const formatFecha = (iso) =>
@@ -265,10 +267,51 @@ const TablaMantenimientos = ({ items, onFinalizar }) => (
 
 /* ── Página principal ─────────────────────────────────────────── */
 const Mantenimientos = () => {
-  const { data, loading, error, refetch } = useApi(getMantenimientos);
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin,    setFechaFin]    = useState('');
+  // Parámetros activos (los que se enviaron al backend al hacer clic en Filtrar)
+  const [filtrosActivos, setFiltrosActivos] = useState({});
+
+  const fetchMantenimientos = useCallback(
+    () => getMantenimientos(filtrosActivos),
+    [filtrosActivos]
+  );
+  const { data, loading, error, refetch } = useApi(fetchMantenimientos);
+
   const [modalNuevo, setModalNuevo] = useState(false);
   const [selectedFin, setSelectedFin] = useState(null);
   const [savingFin, setSavingFin] = useState(false);
+
+  const aplicarFiltros = () => {
+    const p = {};
+    if (fechaInicio) p.fechaInicio = fechaInicio;
+    if (fechaFin)    p.fechaFin    = fechaFin;
+    setFiltrosActivos(p); // dispara re-render de useCallback → useApi refetch
+  };
+
+  const limpiarFiltros = () => {
+    setFechaInicio('');
+    setFechaFin('');
+    setFiltrosActivos({});
+  };
+
+  /** Exporta a PDF usando el servicio centralizado */
+  const exportarPDF = () => {
+    const columnas = ['#', 'ID Activo', 'Tipo de Mantenimiento', 'Detalles', 'Ingreso', 'Salida', 'Estado'];
+    const datos = lista.map(m => [
+      `#${m.id_mantenimiento}`,
+      m.id_activo,
+      m.tipo_mantenimiento,
+      m.detalles || '—',
+      m.fecha_ingreso ? new Date(m.fecha_ingreso).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' }) : '—',
+      m.fecha_salida  ? new Date(m.fecha_salida ).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' }) : '—',
+      m.estado_mantenimiento,
+    ]);
+    const rango = (filtrosActivos.fechaInicio || filtrosActivos.fechaFin)
+      ? { inicio: filtrosActivos.fechaInicio || 'inicio', fin: filtrosActivos.fechaFin || 'actual' }
+      : null;
+    generarReportePDF('Reporte de Mantenimientos', columnas, datos, rango, 'Reporte_Mantenimientos');
+  };
 
   const lista        = data?.data ?? [];
   const enProceso    = lista.filter(m => m.estado_mantenimiento === 'En Proceso');
@@ -301,17 +344,77 @@ const Mantenimientos = () => {
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Mantenimientos</h1>
           <p className="text-gray-500 mt-1 text-sm">Historial técnico de reparaciones y revisiones</p>
         </div>
-        <button
-          onClick={() => setModalNuevo(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-carrera-blue text-white text-sm font-semibold rounded-xl hover:bg-blue-900 shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 self-start sm:self-auto"
-        >
-          <Plus size={16} /> Registrar Mantenimiento
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <button
+            onClick={exportarPDF}
+            disabled={lista.length === 0}
+            title="Exportar a PDF"
+            className="flex items-center gap-2 px-4 py-2.5 bg-utn-red text-white text-sm font-semibold rounded-xl hover:bg-red-700 shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <FileDown size={16} /> PDF
+          </button>
+          <button
+            onClick={() => exportToExcel(mapMantenimientosParaExcel(lista), 'Reporte_Mantenimientos', 'Mantenimientos')}
+            disabled={lista.length === 0}
+            title="Exportar a Excel"
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <FileDown size={16} /> Excel
+          </button>
+          <button
+            onClick={() => setModalNuevo(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-carrera-blue text-white text-sm font-semibold rounded-xl hover:bg-blue-900 shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
+          >
+            <Plus size={16} /> Registrar Mantenimiento
+          </button>
+        </div>
+      </div>
+
+      {/* ── Filtros de fecha ────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-end gap-3 mb-6 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
+        <CalendarRange size={15} className="text-carrera-blue self-center shrink-0" />
+        <span className="text-xs font-semibold text-gray-500 self-center shrink-0">Filtrar por fecha de ingreso:</span>
+        <div className="flex flex-wrap items-end gap-3 flex-1">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Desde</label>
+            <input
+              type="date"
+              value={fechaInicio}
+              max={fechaFin || undefined}
+              onChange={e => setFechaInicio(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-carrera-blue/30 focus:border-carrera-blue text-sm transition-all"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Hasta</label>
+            <input
+              type="date"
+              value={fechaFin}
+              min={fechaInicio || undefined}
+              onChange={e => setFechaFin(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-carrera-blue/30 focus:border-carrera-blue text-sm transition-all"
+            />
+          </div>
+          <button
+            onClick={aplicarFiltros}
+            className="flex items-center gap-1.5 px-4 py-2 bg-carrera-blue text-white text-sm font-semibold rounded-xl hover:bg-blue-900 transition-colors shadow-sm"
+          >
+            Filtrar
+          </button>
+          {(filtrosActivos.fechaInicio || filtrosActivos.fechaFin) && (
+            <button
+              onClick={limpiarFiltros}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-utn-red transition-colors"
+            >
+              <X size={13} /> Limpiar filtro
+            </button>
+          )}
+        </div>
       </div>
 
       {loading && <Spinner />}
